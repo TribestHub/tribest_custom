@@ -9,7 +9,10 @@ doc_events = {
     "Call Log": {
         "after_insert": "tribest_custom.integrations.call_log.create_ticket"
     },
+    "HD Ticket": {
+        "after_insert": "tribest_custom.integrations.whatsapp.outbound_hook.ticket_created"
+    },
     "Communication": {
-        "after_insert": "tribest_custom.integrations.whatsapp.outbound_hook.send_reply"
+        "after_insert": "tribest_custom.integrations.whatsapp.communication_hook.communication_after_insert"
     }
 }

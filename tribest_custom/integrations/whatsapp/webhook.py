@@ -1,120 +1,69 @@
 import frappe
-from werkzeug.wrappers import Response
+from tribest_custom.integrations.whatsapp.inbound import process_inbound
+import hashlib
+import hmac
+
 
 @frappe.whitelist(allow_guest=True)
-def whatsapp_webhook():
+def infobip_webhook():
+    """
+    Public inbound webhook for Infobip WhatsApp.
+    Accepts POST only.
+    """
 
-    # -------------------------
-    # META VERIFICATION (GET)
-    # -------------------------
-    if frappe.request.method == "GET":
-        mode = frappe.request.args.get("hub.mode")
-        verify_token = frappe.request.args.get("hub.verify_token")
-        challenge = frappe.request.args.get("hub.challenge")
+    # Allow POST only
+    if frappe.request.method != "POST":
+        frappe.response["http_status_code"] = 405
+        return "Method Not Allowed"
 
-        expected_token = frappe.conf.get("whatsapp_verify_token")
+    try:
+        # Validate signature if configured
+        validate_infobip_signature()
 
-        if mode == "subscribe" and verify_token == expected_token:
-            return Response(
-                challenge,
-                status=200,
-                content_type="text/plain"
-            )
-
-        return Response(
-            "Invalid verification token",
-            status=403,
-            content_type="text/plain"
-        )
-
-    
-    # ==================================================
-    # WHATSAPP MESSAGE RECEIVED (POST)
-    # ==================================================
-       # -------------------------
-    # INCOMING MESSAGES (POST)
-    # -------------------------
-    if frappe.request.method == "POST":
-        frappe.log_error("WEBHOOK HIT", "WhatsApp Debug")
-
+        # Parse JSON body
         data = frappe.request.get_json()
 
-        try:
-            entry = data.get("entry", [])[0]
-            changes = entry.get("changes", [])[0]
-            value = changes.get("value", {})
-            messages = value.get("messages")
+        if not data:
+            frappe.response["http_status_code"] = 400
+            return "Invalid payload"
 
-            if not messages:
-                return Response("EVENT_RECEIVED", status=200, content_type="text/plain")
+        # Enqueue background processing
+        frappe.enqueue(
+            process_inbound,
+            data=data,
+            queue="short",
+            timeout=300
+        )
 
-            message = messages[0]
-            message_id = message.get("id")
-            sender = message.get("from")
-            text_body = message.get("text", {}).get("body", "")
+        return "OK"
 
-            # -------------------------
-            # Idempotency Protection
-            # -------------------------
-            if frappe.db.exists("WhatsApp Message Log", {"message_id": message_id}):
-                return Response("EVENT_RECEIVED", status=200, content_type="text/plain")
-
-            # Save message log
-            frappe.get_doc({
-                "doctype": "WhatsApp Message Log",
-                "message_id": message_id,
-                "phone_number": sender,
-                "message": text_body
-            }).insert(ignore_permissions=True)
-
-            # -------------------------
-            # Check Existing Open Ticket
-            # -------------------------
-            # -------------------------
-            # Create / Update Ticket as System User
-            # -------------------------
-
-            original_user = frappe.session.user
-            frappe.set_user("Administrator")
-
-            try:
-                existing_ticket = frappe.db.get_value(
-                    "HD Ticket",
-                    {
-                        "custom_medium_identifier": sender,
-                        "status": ["not in", ["Closed", "Resolved"]]
-                    },
-                    "name"
-                )
-
-                if existing_ticket:
-                    frappe.get_doc({
-                        "doctype": "Comment",
-                        "comment_type": "Comment",
-                        "reference_doctype": "HD Ticket",
-                        "reference_name": existing_ticket,
-                        "content": f"WhatsApp message from {sender}:<br><br>{text_body}"
-                    }).insert(ignore_permissions=True)
-
-                else:
-                    existing_ticket = frappe.get_doc({
-                        "doctype": "HD Ticket",
-                        "subject": f"WhatsApp Message from {sender}",
-                        "custom_medium_identifier": sender,
-                        "description": text_body,
-                        "status": "Open",
-                        "priority": "Medium",
-                        "ticket_type": "Complaint"
-                    }).insert(ignore_permissions=True).name
-
-                frappe.db.commit()
-
-            finally:
-                frappe.set_user(original_user)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Infobip Webhook Error")
+        frappe.response["http_status_code"] = 500
+        return "Error"
 
 
-        except Exception:
-            frappe.log_error(frappe.get_traceback(), "WhatsApp Webhook Error")
-            raise
+def validate_infobip_signature():
+    """
+    Optional security validation using X-IB-Signature.
+    Only enforced if secret is configured in site_config.
+    """
 
-        return Response("EVENT_RECEIVED", status=200, content_type="text/plain")
+    secret = frappe.conf.get("infobip_webhook_secret")
+    if not secret:
+        return  # Skip validation if not set
+
+    signature = frappe.request.headers.get("X-IB-Signature")
+    if not signature:
+        frappe.throw("Missing Infobip signature")
+
+    raw_body = frappe.request.get_data()
+
+    expected_signature = hmac.new(
+        secret.encode(),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(signature, expected_signature):
+        frappe.throw("Invalid Infobip signature")
