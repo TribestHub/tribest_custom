@@ -4,6 +4,7 @@ Retrieves configuration from Tribest Custom Setting doctype singlet
 """
 
 import frappe
+from frappe.utils.password import get_decrypted_password
 
 
 def get_setting(field_name: str, default_value=None):
@@ -34,24 +35,42 @@ def get_setting(field_name: str, default_value=None):
         return default_value
 
 
+def get_password_setting(field_name: str):
+    """
+    Retrieve a Password fieldtype setting (decrypted) from Tribest Custom Setting.
+    """
+    try:
+        return get_decrypted_password(
+            "Tribest Custom Setting",
+            "Tribest Custom Setting",
+            field_name
+        ) or ""
+    except Exception:
+        frappe.log_error(
+            f"Failed to decrypt password field '{field_name}'",
+            "Settings Decryption Error"
+        )
+        return ""
+
+
 def get_infobip_api_key():
     """Get Infobip API Key"""
-    return get_setting("infobip_api_key")
+    return get_password_setting("infobip_api_key")
 
 
 def get_infobip_base_url():
     """Get Infobip Base URL"""
-    return get_setting("infobip_base_url")
+    return (get_setting("infobip_base_url") or "").strip()
 
 
 def get_infobip_sender():
     """Get Infobip Sender ID"""
-    return get_setting("infobip_sender")
+    return (get_setting("infobip_sender") or "").strip()
 
 
 def get_infobip_webhook_secret():
     """Get Infobip Webhook Secret"""
-    return get_setting("infobip_webhook_secret")
+    return get_password_setting("infobip_webhook_secret")
 
 
 def get_whatsapp_webhook_user():

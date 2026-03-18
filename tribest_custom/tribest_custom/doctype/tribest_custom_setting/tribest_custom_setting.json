@@ -19,7 +19,7 @@
   },
   {
    "fieldname": "infobip_base_url",
-   "fieldtype": "Password",
+   "fieldtype": "Data",
    "label": "Infobip Base Url"
   },
   {
@@ -42,7 +42,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-18 13:32:32.592070",
+ "modified": "2026-03-18 17:53:46.422369",
  "modified_by": "Administrator",
  "module": "Tribest Custom",
  "name": "Tribest Custom Setting",
