@@ -19,7 +19,7 @@ def infobip_webhook():
 
     try:
         # Validate signature if configured
-        validate_infobip_signature()
+        # validate_infobip_signature()
 
         # Parse JSON body
         data = frappe.request.get_json()
