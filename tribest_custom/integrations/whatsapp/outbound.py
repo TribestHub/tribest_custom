@@ -4,6 +4,11 @@ import base64
 import urllib3
 import re
 from html.parser import HTMLParser
+from tribest_custom.integrations.whatsapp.settings import (
+    get_infobip_api_key,
+    get_infobip_base_url,
+    get_infobip_sender
+)
 
 # Suppress SSL warnings (Infobip has certificate issues)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -44,9 +49,9 @@ def send_whatsapp_message(phone_number: str, message: str) -> dict:
     if message:
         message = strip_html_tags(message).strip()
 
-    api_key = frappe.conf.get("infobip_api_key")
-    base_url = frappe.conf.get("infobip_base_url")
-    sender = frappe.conf.get("infobip_sender")
+    api_key = get_infobip_api_key()
+    base_url = get_infobip_base_url()
+    sender = get_infobip_sender()
 
     if not api_key or not base_url or not sender:
         frappe.log_error(

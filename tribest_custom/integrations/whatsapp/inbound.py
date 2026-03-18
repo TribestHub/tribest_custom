@@ -2,6 +2,7 @@ import frappe
 from frappe.utils import now, get_datetime
 from datetime import datetime, timedelta
 from tribest_custom.integrations.whatsapp.ai_classifier import classify_ticket_type
+from tribest_custom.integrations.whatsapp.settings import get_whatsapp_webhook_user
 
 
 def process_inbound(data: dict):
@@ -38,7 +39,7 @@ def process_inbound(data: dict):
                 continue
 
             original_user = frappe.session.user
-            webhook_user = frappe.conf.get("whatsapp_webhook_user", "whatsapp.bot@yourcompany.com")
+            webhook_user = get_whatsapp_webhook_user()
             frappe.set_user(webhook_user)
 
             try:

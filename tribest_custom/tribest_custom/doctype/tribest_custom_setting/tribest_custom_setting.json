@@ -8,6 +8,7 @@
   "infobip_api_key",
   "infobip_base_url",
   "infobip_sender",
+  "infobip_webhook_secret",
   "whatsapp_webhook_user"
  ],
  "fields": [
@@ -25,6 +26,11 @@
    "fieldname": "infobip_sender",
    "fieldtype": "Data",
    "label": "Infobip Sender"
+  },
+  {
+   "fieldname": "infobip_webhook_secret",
+   "fieldtype": "Password",
+   "label": "Infobip Webhook Secret"
   },
   {
    "fieldname": "whatsapp_webhook_user",
