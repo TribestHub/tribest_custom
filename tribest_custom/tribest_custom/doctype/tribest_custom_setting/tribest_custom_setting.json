@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-17 12:45:12.673166",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "infobip_api_key",
+  "infobip_base_url",
+  "infobip_sender",
+  "whatsapp_webhook_user"
+ ],
+ "fields": [
+  {
+   "fieldname": "infobip_api_key",
+   "fieldtype": "Password",
+   "label": "Infobip Api Key"
+  },
+  {
+   "fieldname": "infobip_base_url",
+   "fieldtype": "Password",
+   "label": "Infobip Base Url"
+  },
+  {
+   "fieldname": "infobip_sender",
+   "fieldtype": "Data",
+   "label": "Infobip Sender"
+  },
+  {
+   "fieldname": "whatsapp_webhook_user",
+   "fieldtype": "Data",
+   "label": "WhatsApp Webhook User"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-03-18 13:32:32.592070",
+ "modified_by": "Administrator",
+ "module": "Tribest Custom",
+ "name": "Tribest Custom Setting",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
