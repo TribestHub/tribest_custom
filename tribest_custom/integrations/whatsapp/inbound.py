@@ -1,26 +1,137 @@
 import frappe
+from frappe.utils import now, get_datetime
+from datetime import datetime, timedelta
+from tribest_custom.integrations.whatsapp.ai_classifier import classify_ticket_type
 
-def process_inbound_message(payload):
+
+def process_inbound(data: dict):
+
     try:
-        entry = payload.get("entry", [])[0]
-        changes = entry.get("changes", [])[0]
-        value = changes.get("value", {})
-        messages = value.get("messages", [])
-
-        if not messages:
+        results = data.get("results", [])
+        if not results:
             return
 
-        message = messages[0]
-        from_number = message.get("from")
-        message_text = message.get("text", {}).get("body")
+        for item in results:
 
-        frappe.log_error(
-            title="WhatsApp Inbound Message",
-            message=f"From: {from_number}\nMessage: {message_text}"
-        )
+            phone_number = item.get("sender")
+            message_id = item.get("messageId")
 
-        # NEXT STEP:
-        # create HD Ticket or route to Helpdesk
+            content_list = item.get("content", [])
+            if not content_list:
+                continue
+
+            content = content_list[0]
+
+            if content.get("type") != "TEXT":
+                continue
+
+            text_body = content.get("text")
+
+            if isinstance(text_body, dict):
+                text_body = text_body.get("body")
+
+            if not text_body:
+                continue
+
+            # Prevent duplicate processing
+            if frappe.db.exists("WhatsApp Message Log", {"message_id": message_id}):
+                continue
+
+            original_user = frappe.session.user
+            webhook_user = frappe.conf.get("whatsapp_webhook_user", "whatsapp.bot@yourcompany.com")
+            frappe.set_user(webhook_user)
+
+            try:
+
+                # Find existing ticket for this phone number (most recent)
+                ticket_name = frappe.db.get_value(
+                    "HD Ticket",
+                    {"custom_medium_identifier": phone_number},
+                    "name",
+                    order_by="creation desc"
+                )
+
+                if ticket_name:
+                    ticket = frappe.get_doc("HD Ticket", ticket_name)
+                    
+                    # Reopen ticket if it was closed within 24 hours
+                    if ticket.status == "Closed":
+                        # Get ticket's modified time
+                        ticket_modified = get_datetime(ticket.modified)
+                        current_time = get_datetime(now())
+                        time_diff = current_time - ticket_modified
+                        
+                        # Only reopen if closed within last 24 hours
+                        if time_diff <= timedelta(hours=24):
+                            ticket.status = "Open"
+                            # Mark as reopened via custom field for agent visibility
+                            if hasattr(ticket, "custom_is_reopened"):
+                                ticket.custom_is_reopened = 1
+                            ticket.save(ignore_permissions=True)
+                            # Reload ticket to get fresh state after reopening
+                            ticket = frappe.get_doc("HD Ticket", ticket_name)
+
+                else:
+                    # Classify ticket type for new tickets
+                    ticket_type = classify_ticket_type(text_body)
+
+                    ticket = frappe.get_doc({
+                        "doctype": "HD Ticket",
+                        "subject": f"WhatsApp from {phone_number}",
+                        "description": text_body,
+                        "custom_medium_identifier": phone_number,
+                        "medium": "WhatsApp",
+                        "ticket_type": ticket_type,
+                        "status": "Open"
+                    }).insert(ignore_permissions=True)
+
+                # Save WhatsApp Message Log
+                msg_log = frappe.get_doc({
+                    "doctype": "WhatsApp Message Log",
+                    "message_id": message_id,
+                    "phone_number": phone_number,
+                    "message": text_body,
+                    "direction": "Inbound",
+                    "ticket": ticket.name
+                }).insert(ignore_permissions=True)
+                
+                frappe.log_error(f"Created WhatsApp Message Log: {msg_log.name} for ticket {ticket.name}", "WhatsApp Debug")
+
+                # Commit message log first
+                frappe.db.commit()
+
+                # Create Communication record (this appears in timeline)
+                try:
+                    comm = frappe.get_doc({
+                        "doctype": "Communication",
+                        "communication_type": "Communication",
+                        "communication_medium": "Chat",
+                        "sent_or_received": "Received",
+                        "subject": f"WhatsApp from {phone_number}",
+                        "content": text_body,
+                        "sender_full_name": f"WhatsApp: {phone_number}",
+                        "reference_doctype": "HD Ticket",
+                        "reference_name": ticket.name,
+                        "communication_date": now(),
+                        "has_attachment": 0
+                    })
+                    comm.insert(ignore_permissions=True)
+                    
+                    frappe.log_error(f"Created Communication: {comm.name} for ticket {ticket.name}", "WhatsApp Debug")
+                    
+                    # Commit communication
+                    frappe.db.commit()
+                except Exception as e:
+                    frappe.log_error(f"Error creating Communication: {str(e)}\n{frappe.get_traceback()}", "WhatsApp Communication Error")
+                
+                # Reload ticket to refresh timeline
+                ticket = frappe.get_doc("HD Ticket", ticket.name)
+                
+                # Notify to refresh UI
+                ticket.notify_update()
+
+            finally:
+                frappe.set_user(original_user)
 
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "WhatsApp Inbound Error")
+        frappe.log_error(frappe.get_traceback(), "Infobip Inbound Processing Error")
