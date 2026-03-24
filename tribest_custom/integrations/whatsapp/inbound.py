@@ -57,21 +57,15 @@ def process_inbound(data: dict):
                     
                     # Reopen ticket if it was closed within 24 hours
                     if ticket.status == "Closed":
-                        # Get ticket's modified time
                         ticket_modified = get_datetime(ticket.modified)
                         current_time = get_datetime(now())
                         time_diff = current_time - ticket_modified
-                        
-                        # Only reopen if closed within last 24 hours
                         if time_diff <= timedelta(hours=24):
-                            ticket.status = "Open"
-                            # Mark as reopened via custom field for agent visibility
-                            if hasattr(ticket, "custom_is_reopened"):
-                                ticket.custom_is_reopened = 1
-                            ticket.save(ignore_permissions=True)
-                            # Reload ticket to get fresh state after reopening
+                            # Use db_set to directly update status in DB, bypassing all validation
+                            frappe.db.set_value("HD Ticket", ticket_name,  "status", "ReOpen")
+                            frappe.db.commit()
+                            # Reload ticket with fresh state
                             ticket = frappe.get_doc("HD Ticket", ticket_name)
-
                 else:
                     # Classify ticket type for new tickets
                     ticket_type = classify_ticket_type(text_body)

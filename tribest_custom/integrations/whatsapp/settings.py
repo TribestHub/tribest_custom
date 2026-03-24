@@ -74,5 +74,5 @@ def get_infobip_webhook_secret():
 
 
 def get_whatsapp_webhook_user():
-    """Get WhatsApp Webhook User (defaults to whatsapp.bot@yourcompany.com if not configured)"""
-    return get_setting("whatsapp_webhook_user", "whatsapp.bot@yourcompany.com")
+    """Get WhatsApp Webhook User """
+    return get_setting("whatsapp_webhook_user")
