@@ -8,6 +8,7 @@
   "infobip_api_key",
   "infobip_base_url",
   "infobip_sender",
+  "infobip_webhook_secret",
   "whatsapp_webhook_user"
  ],
  "fields": [
@@ -18,13 +19,18 @@
   },
   {
    "fieldname": "infobip_base_url",
-   "fieldtype": "Password",
+   "fieldtype": "Data",
    "label": "Infobip Base Url"
   },
   {
    "fieldname": "infobip_sender",
    "fieldtype": "Data",
    "label": "Infobip Sender"
+  },
+  {
+   "fieldname": "infobip_webhook_secret",
+   "fieldtype": "Password",
+   "label": "Infobip Webhook Secret"
   },
   {
    "fieldname": "whatsapp_webhook_user",
@@ -36,7 +42,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-18 13:32:32.592070",
+ "modified": "2026-03-18 17:53:46.422369",
  "modified_by": "Administrator",
  "module": "Tribest Custom",
  "name": "Tribest Custom Setting",

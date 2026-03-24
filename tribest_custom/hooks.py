@@ -30,5 +30,9 @@ doc_events = {
     },
     "Communication": {
         "after_insert": "tribest_custom.integrations.whatsapp.communication_hook.communication_after_insert"
+    },
+     "Tribest Custom Setting": {
+        "on_update": "tribest_custom.setup.create_whatsapp_bot_user"
     }
 }
+

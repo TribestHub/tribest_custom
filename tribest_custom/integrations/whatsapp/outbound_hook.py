@@ -1,6 +1,7 @@
 import frappe
 from frappe.utils import now, get_datetime
 from tribest_custom.integrations.whatsapp.outbound import send_whatsapp_message
+from tribest_custom.integrations.whatsapp.settings import get_whatsapp_webhook_user
 
 
 def ticket_created(doc, method):
@@ -36,7 +37,7 @@ def ticket_created(doc, method):
 
         # Use dedicated webhook user
         original_user = frappe.session.user
-        webhook_user = frappe.conf.get("whatsapp_webhook_user", "whatsapp.bot@yourcompany.com")
+        webhook_user = get_whatsapp_webhook_user()
         frappe.set_user(webhook_user)
 
         try:

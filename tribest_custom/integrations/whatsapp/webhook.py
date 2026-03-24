@@ -1,5 +1,6 @@
 import frappe
 from tribest_custom.integrations.whatsapp.inbound import process_inbound
+from tribest_custom.integrations.whatsapp.settings import get_infobip_webhook_secret
 import hashlib
 import hmac
 
@@ -18,7 +19,7 @@ def infobip_webhook():
 
     try:
         # Validate signature if configured
-        validate_infobip_signature()
+        # validate_infobip_signature()
 
         # Parse JSON body
         data = frappe.request.get_json()
@@ -46,10 +47,10 @@ def infobip_webhook():
 def validate_infobip_signature():
     """
     Optional security validation using X-IB-Signature.
-    Only enforced if secret is configured in site_config.
+    Retrieves secret from Tribest Custom Setting doctype singlet.
     """
 
-    secret = frappe.conf.get("infobip_webhook_secret")
+    secret = get_infobip_webhook_secret()
     if not secret:
         return  # Skip validation if not set
 

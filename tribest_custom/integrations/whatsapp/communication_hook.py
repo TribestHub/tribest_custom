@@ -1,6 +1,7 @@
 import frappe
 from frappe.utils import now
 from tribest_custom.integrations.whatsapp.outbound import send_whatsapp_message
+from tribest_custom.integrations.whatsapp.settings import get_whatsapp_webhook_user
 
 
 def communication_after_insert(doc, method):
@@ -35,7 +36,7 @@ def communication_after_insert(doc, method):
             return
 
         # For Chat medium (internal system messages), only process if not from bot
-        webhook_user = frappe.conf.get("whatsapp_webhook_user", "whatsapp.bot@yourcompany.com")
+        webhook_user = get_whatsapp_webhook_user()
         if doc.communication_medium == "Chat" and doc.owner != webhook_user:
             # This is an agent reply via Chat, send it
             pass
