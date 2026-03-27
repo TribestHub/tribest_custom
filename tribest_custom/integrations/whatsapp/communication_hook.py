@@ -71,7 +71,14 @@ def communication_after_insert(doc, method):
         )
 
         # Use dedicated webhook user
-        original_user = frappe.session.user
+        original_user = frappe.session.user or "Administrator"
+        webhook_user = get_whatsapp_webhook_user()
+        if not webhook_user:
+            frappe.log_error(
+                "whatsapp_webhook_user not configured in Tribest Custom Setting",
+                "WhatsApp Outbound Config Error"
+                )
+            return
         frappe.set_user(webhook_user)
 
         try:

@@ -3,6 +3,28 @@ from frappe.utils import now, get_datetime
 from datetime import datetime, timedelta
 from tribest_custom.integrations.whatsapp.ai_classifier import classify_ticket_type
 from tribest_custom.integrations.whatsapp.settings import get_whatsapp_webhook_user
+from html.parser import HTMLParser
+
+
+class MLStripper(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.reset()
+        self.fed = []
+
+    def handle_data(self, d):
+        self.fed.append(d)
+
+    def get_data(self):
+        return ''.join(self.fed)
+
+
+def strip_html_tags(html_text):
+    if not html_text:
+        return html_text
+    stripper = MLStripper()
+    stripper.feed(html_text)
+    return stripper.get_data().strip()
 
 
 def process_inbound(data: dict):
@@ -34,42 +56,59 @@ def process_inbound(data: dict):
             if not text_body:
                 continue
 
+            # Strip HTML tags
+            text_body = strip_html_tags(text_body)
+
             # Prevent duplicate processing
             if frappe.db.exists("WhatsApp Message Log", {"message_id": message_id}):
                 continue
 
-            original_user = frappe.session.user
+            original_user = frappe.session.user or "Administrator"
             webhook_user = get_whatsapp_webhook_user()
+            if not webhook_user:
+                frappe.log_error(
+                    "whatsapp_webhook_user not configured in Tribest Custom Setting",
+                    "WhatsApp Inbound Config Error"
+                    )
+                return
             frappe.set_user(webhook_user)
 
             try:
-
-                # Find existing ticket for this phone number (most recent)
+                # Find existing active ticket for this phone number
                 ticket_name = frappe.db.get_value(
                     "HD Ticket",
-                    {"custom_medium_identifier": phone_number},
+                    {"custom_medium_identifier": phone_number, "status": ["!=", "Closed"]},
                     "name",
                     order_by="creation desc"
                 )
 
+                # If no active ticket, check for recently closed one
+                if not ticket_name:
+                    ticket_name = frappe.db.get_value(
+                        "HD Ticket",
+                        {"custom_medium_identifier": phone_number, "status": "Closed"},
+                        "name",
+                        order_by="modified desc"
+                    )
+
                 if ticket_name:
                     ticket = frappe.get_doc("HD Ticket", ticket_name)
-                    
-                    # Reopen ticket if it was closed within 24 hours
+
                     if ticket.status == "Closed":
                         ticket_modified = get_datetime(ticket.modified)
                         current_time = get_datetime(now())
                         time_diff = current_time - ticket_modified
-                        if time_diff <= timedelta(hours=24):
-                            # Use db_set to directly update status in DB, bypassing all validation
-                            frappe.db.set_value("HD Ticket", ticket_name,  "status", "ReOpen")
-                            frappe.db.commit()
-                            # Reload ticket with fresh state
-                            ticket = frappe.get_doc("HD Ticket", ticket_name)
-                else:
-                    # Classify ticket type for new tickets
-                    ticket_type = classify_ticket_type(text_body)
 
+                        if time_diff <= timedelta(hours=24):
+                            frappe.db.set_value("HD Ticket", ticket_name, "status", "Open")
+                            frappe.db.commit()
+                            ticket = frappe.get_doc("HD Ticket", ticket_name)
+                        else:
+                            # Closed more than 24 hours ago — create new ticket
+                            ticket_name = None
+
+                if not ticket_name:
+                    ticket_type = classify_ticket_type(text_body)
                     ticket = frappe.get_doc({
                         "doctype": "HD Ticket",
                         "subject": f"WhatsApp from {phone_number}",
@@ -89,7 +128,7 @@ def process_inbound(data: dict):
                     "direction": "Inbound",
                     "ticket": ticket.name
                 }).insert(ignore_permissions=True)
-                
+
                 frappe.log_error(f"Created WhatsApp Message Log: {msg_log.name} for ticket {ticket.name}", "WhatsApp Debug")
 
                 # Commit message log first
@@ -97,6 +136,7 @@ def process_inbound(data: dict):
 
                 # Create Communication record (this appears in timeline)
                 try:
+                    frappe.set_user("Administrator")
                     comm = frappe.get_doc({
                         "doctype": "Communication",
                         "communication_type": "Communication",
@@ -111,17 +151,18 @@ def process_inbound(data: dict):
                         "has_attachment": 0
                     })
                     comm.insert(ignore_permissions=True)
-                    
+
                     frappe.log_error(f"Created Communication: {comm.name} for ticket {ticket.name}", "WhatsApp Debug")
-                    
-                    # Commit communication
+
                     frappe.db.commit()
                 except Exception as e:
                     frappe.log_error(f"Error creating Communication: {str(e)}\n{frappe.get_traceback()}", "WhatsApp Communication Error")
-                
+                finally:
+                    frappe.set_user(webhook_user)
+
                 # Reload ticket to refresh timeline
                 ticket = frappe.get_doc("HD Ticket", ticket.name)
-                
+
                 # Notify to refresh UI
                 ticket.notify_update()
 
