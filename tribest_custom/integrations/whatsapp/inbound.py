@@ -65,12 +65,14 @@ def process_inbound(data: dict):
 
             original_user = frappe.session.user or "Administrator"
             webhook_user = get_whatsapp_webhook_user()
+
             if not webhook_user:
                 frappe.log_error(
                     "whatsapp_webhook_user not configured in Tribest Custom Setting",
                     "WhatsApp Inbound Config Error"
-                    )
+                )
                 return
+
             frappe.set_user(webhook_user)
 
             try:
@@ -129,9 +131,6 @@ def process_inbound(data: dict):
                     "ticket": ticket.name
                 }).insert(ignore_permissions=True)
 
-                frappe.log_error(f"Created WhatsApp Message Log: {msg_log.name} for ticket {ticket.name}", "WhatsApp Debug")
-
-                # Commit message log first
                 frappe.db.commit()
 
                 # Create Communication record (this appears in timeline)
@@ -150,13 +149,15 @@ def process_inbound(data: dict):
                         "communication_date": now(),
                         "has_attachment": 0
                     })
+                    comm.flags.ignore_auto_creation = True
                     comm.insert(ignore_permissions=True)
-
-                    frappe.log_error(f"Created Communication: {comm.name} for ticket {ticket.name}", "WhatsApp Debug")
-
                     frappe.db.commit()
+
                 except Exception as e:
-                    frappe.log_error(f"Error creating Communication: {str(e)}\n{frappe.get_traceback()}", "WhatsApp Communication Error")
+                    frappe.log_error(
+                        f"Error creating Communication: {str(e)}\n{frappe.get_traceback()}",
+                        "WhatsApp Communication Error"
+                    )
                 finally:
                     frappe.set_user(webhook_user)
 

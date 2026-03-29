@@ -16,7 +16,7 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [
-            ["doctype", "=", "HD Ticket"],
+            ["dt", "=", "HD Ticket"],
         ]
     }
 ]
