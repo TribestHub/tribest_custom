@@ -33,5 +33,5 @@ doc_events = {
 }
 
 after_migrate = [
-    "tribest_custom.setup.after_migrate"
+    "tribest_custom.setup.debug_after_migrate"
 ]
