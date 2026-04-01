@@ -7,6 +7,16 @@ app_license = "mit"
 
 required_apps = ["frappe", "helpdesk"]
 
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": [
+            ["dt", "=", "HD Ticket"],
+            ["fieldname", "in", ["medium", "custom_medium_identifier"]]
+        ]
+    }
+]
+
 doc_events = {
     "Call Log": {
         "after_insert": "tribest_custom.integrations.call_log.create_ticket"

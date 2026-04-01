@@ -1,0 +1,27 @@
+[
+  {
+    "doctype": "Custom Field",
+    "dt": "HD Ticket",
+    "fieldname": "medium",
+    "fieldtype": "Select",
+    "label": "Medium",
+    "options": "Email\nWhatsApp\nChat\nPhone\nOther",
+    "insert_after": "status",
+    "in_list_view": 1,
+    "in_standard_filter": 1,
+    "search_index": 1,
+    "description": "Medium through which ticket was created"
+  },
+  {
+    "doctype": "Custom Field",
+    "dt": "HD Ticket",
+    "fieldname": "custom_medium_identifier",
+    "fieldtype": "Data",
+    "label": "Custom Medium Identifier",
+    "insert_after": "medium",
+    "in_list_view": 1,
+    "in_standard_filter": 1,
+    "search_index": 1,
+    "description": "WhatsApp phone number or custom medium identifier"
+  }
+]
