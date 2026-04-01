@@ -76,6 +76,8 @@ def process_inbound(data: dict):
             frappe.set_user(webhook_user)
 
             try:
+                is_new_ticket = False
+
                 # Find existing active ticket for this phone number
                 ticket_name = frappe.db.get_value(
                     "HD Ticket",
@@ -120,9 +122,12 @@ def process_inbound(data: dict):
                         "ticket_type": ticket_type,
                         "status": "Open"
                     }).insert(ignore_permissions=True)
+                    is_new_ticket = True
+                else:
+                    is_new_ticket = False
 
                 # Save WhatsApp Message Log
-                msg_log = frappe.get_doc({
+                frappe.get_doc({
                     "doctype": "WhatsApp Message Log",
                     "message_id": message_id,
                     "phone_number": phone_number,
@@ -133,33 +138,31 @@ def process_inbound(data: dict):
 
                 frappe.db.commit()
 
-                # Create Communication record (this appears in timeline)
-                try:
-                    frappe.set_user("Administrator")
-                    comm = frappe.get_doc({
-                        "doctype": "Communication",
-                        "communication_type": "Communication",
-                        "communication_medium": "Chat",
-                        "sent_or_received": "Received",
-                        "subject": f"WhatsApp from {phone_number}",
-                        "content": text_body,
-                        "sender_full_name": f"WhatsApp: {phone_number}",
-                        "reference_doctype": "HD Ticket",
-                        "reference_name": ticket.name,
-                        "communication_date": now(),
-                        "has_attachment": 0
-                    })
-                    comm.flags.ignore_auto_creation = True
-                    comm.insert(ignore_permissions=True)
-                    frappe.db.commit()
+                # Only manually create Communication for existing tickets
+                # For new tickets, Helpdesk auto-creates it via after_insert
+                if not is_new_ticket:
+                    try:
+                        comm = frappe.get_doc({
+                            "doctype": "Communication",
+                            "communication_type": "Communication",
+                            "communication_medium": "Chat",
+                            "sent_or_received": "Received",
+                            "subject": f"WhatsApp from {phone_number}",
+                            "content": text_body,
+                            "sender_full_name": f"WhatsApp: {phone_number}",
+                            "reference_doctype": "HD Ticket",
+                            "reference_name": ticket.name,
+                            "communication_date": now(),
+                            "has_attachment": 0
+                        })
+                        comm.insert(ignore_permissions=True)
+                        frappe.db.commit()
 
-                except Exception as e:
-                    frappe.log_error(
-                        f"Error creating Communication: {str(e)}\n{frappe.get_traceback()}",
-                        "WhatsApp Communication Error"
-                    )
-                finally:
-                    frappe.set_user(webhook_user)
+                    except Exception as e:
+                        frappe.log_error(
+                            f"Error creating Communication: {str(e)}\n{frappe.get_traceback()}",
+                            "WhatsApp Communication Error"
+                        )
 
                 # Reload ticket to refresh timeline
                 ticket = frappe.get_doc("HD Ticket", ticket.name)
