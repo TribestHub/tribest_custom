@@ -1,5 +1,5 @@
 import frappe
-from frappe.utils import now, get_datetime
+from frappe.utils import now
 from tribest_custom.integrations.whatsapp.outbound import send_whatsapp_message
 from tribest_custom.integrations.whatsapp.settings import get_whatsapp_webhook_user
 
@@ -28,27 +28,33 @@ def ticket_created(doc, method):
         ):
             return
 
-        message = build_confirmation_message(doc)
-
-        response = send_whatsapp_message(phone_number, message)
-        
-        # Extract message ID from response
-        message_id = response.get("messages", [{}])[0].get("messageId", "")
-
-        # Use dedicated webhook user
-        original_user = frappe.session.user or "Administrator"
         webhook_user = get_whatsapp_webhook_user()
         if not webhook_user:
             frappe.log_error(
                 "whatsapp_webhook_user not configured in Tribest Custom Setting",
                 "WhatsApp Outbound Config Error"
-                )
+            )
             return
+
+        original_user = frappe.session.user or "Administrator"
         frappe.set_user(webhook_user)
 
         try:
+            message = build_confirmation_message(doc)
+            response = send_whatsapp_message(phone_number, message)
+
+            if not response:
+                frappe.log_error(
+                    f"No response from Infobip for ticket {doc.name}",
+                    "WhatsApp Outbound Error"
+                )
+                return
+
+            # Extract message ID from response
+            message_id = response.get("messages", [{}])[0].get("messageId", "")
+
             # Log outbound message to WhatsApp Message Log
-            msg_log = frappe.get_doc({
+            frappe.get_doc({
                 "doctype": "WhatsApp Message Log",
                 "message_id": message_id,
                 "phone_number": phone_number,
@@ -56,10 +62,7 @@ def ticket_created(doc, method):
                 "direction": "Outbound",
                 "ticket": doc.name
             }).insert(ignore_permissions=True)
-            
-            frappe.log_error(f"Created Outbound WhatsApp Message Log: {msg_log.name} for ticket {doc.name}", "WhatsApp Debug")
-            
-            # Commit message log
+
             frappe.db.commit()
 
             # Create Communication record for ticket timeline/portal
@@ -75,13 +78,13 @@ def ticket_created(doc, method):
                 "reference_name": doc.name,
                 "communication_date": now(),
                 "has_attachment": 0
-            }).insert(ignore_permissions=True)
-            
-            frappe.log_error(f"Created Outbound Communication: {comm.name} for ticket {doc.name}", "WhatsApp Debug")
-            
-            # Commit communication
+            })
+            comm.flags.ignore_validate = True
+            comm.flags.ignore_mandatory = True
+            comm.insert(ignore_permissions=True)
+
             frappe.db.commit()
-            
+
             # Reload ticket and notify
             ticket = frappe.get_doc("HD Ticket", doc.name)
             ticket.notify_update()
@@ -98,7 +101,6 @@ def build_confirmation_message(doc):
     Construct confirmation message.
     Keep it short (WhatsApp best practice).
     """
-
     return (
         f"Your ticket has been created.\n\n"
         f"Ticket ID: {doc.name}\n"

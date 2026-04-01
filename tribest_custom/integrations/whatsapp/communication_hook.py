@@ -25,6 +25,13 @@ def communication_after_insert(doc, method):
         if doc.owner == webhook_user:
             return
 
+        if not webhook_user:
+            frappe.log_error(
+                "whatsapp_webhook_user not configured in Tribest Custom Setting",
+                "WhatsApp Outbound Config Error"
+            )
+            return
+
         # At this point it's an outbound message from a real agent — process it
         ticket = frappe.get_doc("HD Ticket", ticket_name)
 
@@ -46,17 +53,6 @@ def communication_after_insert(doc, method):
         message_text = doc.content
         if not message_text:
             return
-
-        original_user = frappe.session.user or "Administrator"
-
-        if not webhook_user:
-            frappe.log_error(
-                "whatsapp_webhook_user not configured in Tribest Custom Setting",
-                "WhatsApp Outbound Config Error"
-            )
-            return
-
-        frappe.set_user(webhook_user)
 
         try:
             response = send_whatsapp_message(phone_number, message_text)
@@ -83,9 +79,6 @@ def communication_after_insert(doc, method):
 
         except Exception:
             frappe.log_error(frappe.get_traceback(), "WhatsApp Agent Reply Error")
-
-        finally:
-            frappe.set_user(original_user)
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), "WhatsApp Communication Hook Error")
