@@ -50,6 +50,12 @@ def create_whatsapp_bot_user(doc=None, method=None):
 
 def create_hd_ticket_custom_fields():
     """Create custom fields on HD Ticket if they don't exist"""
+    if not frappe.db.exists("DocType", "HD Ticket"):
+        frappe.log_error(
+            "HD Ticket DocType not found during custom field setup",
+            "Tribest Custom Debug"
+        )
+        return
 
     fields = [
         {
@@ -77,15 +83,29 @@ def create_hd_ticket_custom_fields():
         }
     ]
 
+    meta = frappe.get_meta("HD Ticket")
+
     for field in fields:
+        frappe.log_error(
+            f"Checking HD Ticket field: {field['fieldname']}",
+            "Tribest Custom Debug"
+        )
+
         # Check if field already exists in meta (helpdesk source code)
-        meta = frappe.get_meta("HD Ticket")
         existing = [df for df in meta.get("fields") if df.fieldname == field["fieldname"]]
         if existing:
+            frappe.log_error(
+                f"Skipping {field['fieldname']}: already present in HD Ticket meta",
+                "Tribest Custom Debug"
+            )
             continue
 
         # Check if Custom Field record already exists
         if frappe.db.exists("Custom Field", f"HD Ticket-{field['fieldname']}"):
+            frappe.log_error(
+                f"Skipping {field['fieldname']}: Custom Field record already exists",
+                "Tribest Custom Debug"
+            )
             continue
 
         # Create Custom Field
@@ -95,12 +115,18 @@ def create_hd_ticket_custom_fields():
         }).insert(ignore_permissions=True)
         frappe.log_error(
             f"Created Custom Field: {field['fieldname']} on HD Ticket",
-            "WhatsApp Setup"
+            "Tribest Custom Debug"
         )
 
     frappe.db.commit()
 
 
 def after_migrate():
-    create_whatsapp_bot_user()
-    create_hd_ticket_custom_fields()
+    frappe.log_error("after_migrate hook fired", "Tribest Custom Debug")
+
+    try:
+        create_whatsapp_bot_user()
+        create_hd_ticket_custom_fields()
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Tribest Custom after_migrate failed")
+        raise
