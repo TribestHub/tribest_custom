@@ -118,7 +118,7 @@ def process_inbound(data: dict):
                         "subject": f"WhatsApp from {phone_number}",
                         "description": text_body,
                         "custom_medium_identifier": phone_number,
-                        "medium": "WhatsApp",
+                        "custom_medium": "WhatsApp",
                         "ticket_type": ticket_type,
                         "status": "Open"
                     }).insert(ignore_permissions=True)

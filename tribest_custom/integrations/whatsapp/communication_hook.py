@@ -36,7 +36,7 @@ def communication_after_insert(doc, method):
         ticket = frappe.get_doc("HD Ticket", ticket_name)
 
         # Only process WhatsApp tickets
-        if getattr(ticket, "medium", None) != "WhatsApp":
+        if getattr(ticket, "custom_medium", None) != "WhatsApp":
             return
 
         # Get customer phone number from ticket

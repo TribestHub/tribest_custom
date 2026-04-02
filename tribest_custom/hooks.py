@@ -12,7 +12,7 @@ fixtures = [
         "dt": "Custom Field",
         "filters": [
             ["dt", "=", "HD Ticket"],
-            ["fieldname", "in", ["medium", "custom_medium_identifier"]]
+            ["fieldname", "in", ["custom_medium", "custom_medium_identifier"]]
         ]
     }
 ]

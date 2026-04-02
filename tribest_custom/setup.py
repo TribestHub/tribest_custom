@@ -47,17 +47,13 @@ def create_whatsapp_bot_user(doc=None, method=None):
             frappe.db.commit()
 
 def debug_after_migrate():
-    """Temporary debug function - remove after confirming fixtures work"""
     try:
-        import frappe
-        
-        # Check if fields exist after migration
-        medium = frappe.db.exists("Custom Field", "HD Ticket-medium")
+        medium = frappe.db.exists("Custom Field", "HD Ticket-custom_medium")
         identifier = frappe.db.exists("Custom Field", "HD Ticket-custom_medium_identifier")
         
         frappe.log_error(
             f"Fixture Debug:\n"
-            f"HD Ticket-medium exists: {medium}\n"
+            f"HD Ticket-custom_medium exists: {medium}\n"
             f"HD Ticket-custom_medium_identifier exists: {identifier}",
             "Fixture Debug"
         )
