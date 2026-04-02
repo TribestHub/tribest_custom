@@ -31,7 +31,3 @@ doc_events = {
         "on_update": "tribest_custom.setup.create_whatsapp_bot_user"
     }
 }
-
-after_migrate = [
-    "tribest_custom.setup.debug_after_migrate"
-]

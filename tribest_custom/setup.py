@@ -45,17 +45,3 @@ def create_whatsapp_bot_user(doc=None, method=None):
         if updated:
             user.save(ignore_permissions=True)
             frappe.db.commit()
-
-def debug_after_migrate():
-    try:
-        medium = frappe.db.exists("Custom Field", "HD Ticket-custom_medium")
-        identifier = frappe.db.exists("Custom Field", "HD Ticket-custom_medium_identifier")
-        
-        frappe.log_error(
-            f"Fixture Debug:\n"
-            f"HD Ticket-custom_medium exists: {medium}\n"
-            f"HD Ticket-custom_medium_identifier exists: {identifier}",
-            "Fixture Debug"
-        )
-    except Exception as e:
-        frappe.log_error(str(e), "Fixture Debug Error")
