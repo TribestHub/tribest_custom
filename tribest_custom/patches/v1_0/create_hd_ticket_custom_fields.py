@@ -27,27 +27,28 @@
 #        }
 #    ]
 #
-    for field in fields:
-        if frappe.db.exists("Custom Field", f"HD Ticket-{field['fieldname']}"):
-            frappe.log_error(
-                f"Field already exists: HD Ticket-{field['fieldname']}",
-                "HD Ticket Patch"
-            )
-            continue
-
-        try:
-            frappe.get_doc({
-                "doctype": "Custom Field",
-                **field
-            }).insert(ignore_permissions=True)
-            frappe.log_error(
-                f"Successfully created: HD Ticket-{field['fieldname']}",
-                "HD Ticket Patch"
-            )
-        except Exception as e:
-            frappe.log_error(
-                f"Failed to create {field['fieldname']}: {str(e)}\n{frappe.get_traceback()}",
-                "HD Ticket Patch Error"
-            )
-
-    frappe.db.commit()
+#    for field in fields:
+#        if frappe.db.exists("Custom Field", f"HD Ticket-{field['fieldname']}"):
+#            frappe.log_error(
+#                f"Field already exists: HD Ticket-{field['fieldname']}",
+#                "HD Ticket Patch"
+#            )
+#            continue
+#
+#        try:
+#            frappe.get_doc({
+#                "doctype": "Custom Field",
+#                **field
+#            }).insert(ignore_permissions=True)
+#            frappe.log_error(
+#                f"Successfully created: HD Ticket-{field['fieldname']}",
+#                "HD Ticket Patch"
+#            )
+#        except Exception as e:
+#            frappe.log_error(
+#                f"Failed to create {field['fieldname']}: {str(e)}\n{frappe.get_traceback()}",
+#                "HD Ticket Patch Error"
+#            )
+#
+#    frappe.db.commit()
+#
